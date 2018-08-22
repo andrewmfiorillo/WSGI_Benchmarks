@@ -2,9 +2,9 @@
 
 CONTAINER=
 STATS_PID=
-IP=
+IP="127.0.0.1"
 PORT=9808
-CONNECTIONS=(100 200 300 400 500 600 700 800 900 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000)
+CONNECTIONS=(2000 3000 4000 5000 6000 7000 8000 9000 10000)
 BASE=$1
 
 ulimit -n 10240
@@ -15,14 +15,21 @@ function start() {
     echo "Starting $id ($*)"
     CONTAINER=$(docker run --detach --memory 512MB --cpuset-cpus 0,1 --workdir /home/www/wsgi_benchmark -p $PORT:$PORT wsgi_benchmark "$@")
 
+	attempts=0
     while true; do
+		if [[ attempts>10 ]]; then
+		    break
+		fi
+		
         echo "    Waiting for container ..."
-        IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$CONTAINER")
+        # IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$CONTAINER")
+		IP="127.0.0.1"
         result=$(curl --silent "http://$IP:$PORT")
         if [[ "$result" == "OK" ]]; then
             break
         fi
         sleep 1
+		attempts=attempts+1
     done
 }
 
@@ -58,7 +65,7 @@ for connections in "${CONNECTIONS[@]}"; do
                 continue
                 ;;
             wsgi)
-                start "$base" python "$filename"
+                start "$base" python3 "$filename"
                 ;;
             sh)
                 start "$base" bash "$filename"
